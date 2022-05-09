@@ -47,7 +47,7 @@ export async function validJoiSignin (req, res, next) {
     const validation = schema.validate(user);
     if(validation.error){
         console.log('Erro ao logar usuário', validation.error);
-        res.status(422).send('Erro ao logar usuario');
+        res.status(422).send('Erro ao logar usuario. Senha deve conter pelo menos 8 caracteres, uma letra maiúscula, uma letra minúscula, um número e um caracter especial');
         return;
     }
     next();
