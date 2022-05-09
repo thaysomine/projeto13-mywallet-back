@@ -172,5 +172,22 @@ app.post('/account', async (req, res) => {
     }
 });
 
+// logout
+app.delete('/logout', async (req, res) => {
+    const {authorization} = req.headers;
+    const token = authorization?.replace('Bearer', '').trim();
+    if(!token) return res.sendStatus(401);
+
+    try {
+        const session = await database.collection('sessions').findOne({token});
+        if(!session) return res.sendStatus(401);
+
+        await database.collection('sessions').deleteOne({token});
+        res.sendStatus(200);
+    } catch {
+        res.status(404).send('TOKEN inválido');
+    }
+});
+
 app.listen(5000);
 
