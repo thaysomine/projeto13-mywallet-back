@@ -1,18 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 import joi from 'joi';
 import bcrypt from 'bcrypt';
 import {v4} from 'uuid';
+import dayjs from 'dayjs';
 
-const app = express();
-app.use(express.json()); 
-app.use(cors());
+import { MongoClient } from 'mongodb';
+//import dotenv from 'dotenv';
+dotenv.config();
 
 // conectando ao banco de dados
 let database = null;
-dotenv.config();
 const mongoClient = new MongoClient(process.env.MONGO_URL);
 const promise = mongoClient.connect();
 promise.then(()=> {
@@ -20,6 +19,11 @@ promise.then(()=> {
     console.log('Conectado ao banco de dados');
 });
 promise.catch((err) => console.log(err));
+
+const app = express();
+app.use(express.json()); 
+app.use(cors());
+dotenv.config();
 
 // post para cadastrar um novo usuário
 app.post('/sign-up', async (req, res) => {
@@ -93,8 +97,11 @@ app.post('/sign-in', async (req, res) => {
         if (userdb && await bcrypt.compare(body.password, userdb.password)) {
             const token = v4();
             console.log('user logado', token);
-            await database.collection('sessions').insertOne({token, user: userdb._id});
-            res.send(userdb).status(200);
+            await database.collection('sessions').insertOne({token, user: userdb._id, name: userdb.name});
+            const user = await database.collection('sessions').findOne({token});
+
+            delete user._id;
+            res.send(user).status(200);
         } else {
             res.status(401).send('Usuario e/ou senha incorretos');
             console.log('Usuario e/ou senha incorretos');
@@ -106,7 +113,64 @@ app.post('/sign-in', async (req, res) => {
 
 });
 
+// get para enviar informações da conta do usuário
+app.get('/account', async (req, res) => {
+    const {authorization} = req.headers;
+    const token = authorization?.replace('Bearer', '').trim();
+    if(!token) return res.sendStatus(401);
 
+    try {
+        const session = await database.collection('sessions').findOne({token});
+        if(!session) return res.sendStatus(401);
+
+        const user = await database.collection('balances').find({user: session.user}).toArray();
+        if(!user) return res.sendStatus(404);
+
+        console.log('user', user);
+        user.map(item => {
+            delete item._id;
+            delete item.user;
+        });
+        res.send(user).status(200);
+    } catch {
+            res.status(404).send('TOKEN inválido');
+            console.log('TOKEN inválido');
+        }
+});
+
+app.post('/account', async (req, res) => {
+    const {authorization} = req.headers;
+    const balance = {
+        description: req.body.description,
+        value: req.body.value,
+        type: req.body.type
+    };
+    const schema = joi.object({
+        description: joi.string().required(),
+        value: joi.number().required(),
+        type: joi.string().required()
+    });
+    const validation = schema.validate(balance);
+    const validateType = (req.body.type === 'income' || req.body.type === 'outcome');
+    if(validation.error || !validateType) {
+        console.log('Erro ao adicionar saldo', validation.error);
+        res.status(422).send('Erro ao adicionar saldo');
+        return;
+    }
+    const token = authorization?.replace('Bearer', '').trim();
+    if(!token) return res.sendStatus(401);
+
+    try {
+        const session = await database.collection('sessions').findOne({token});
+        if(!session) return res.sendStatus(401);
+
+        await database.collection('balances').insertOne({user: session.user, date: dayjs().format('DD/MM'), ...balance});
+        res.sendStatus(201);
+
+    } catch {
+        res.status(404).send('TOKEN inválido');
+    }
+});
 
 app.listen(5000);
 
