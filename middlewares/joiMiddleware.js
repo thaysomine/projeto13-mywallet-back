@@ -1,11 +1,4 @@
-import database from "../database.js";
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import joi from 'joi';
-import bcrypt from 'bcrypt';
-import {v4} from 'uuid';
-import dayjs from 'dayjs';
 
 export async function validJoiSignup (req, res, next) {
     const body = req.body;

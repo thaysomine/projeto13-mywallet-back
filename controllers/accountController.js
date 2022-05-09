@@ -1,12 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import joi from 'joi';
-import bcrypt from 'bcrypt';
-import {v4} from 'uuid';
 import dayjs from 'dayjs';
 
-import { MongoClient } from 'mongodb';
 import database from '../database.js';
 
 export async function getAccount(req, res) {
