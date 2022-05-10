@@ -17,5 +17,5 @@ app.use(authRouter);
 // get e post para enviar e receber informações da conta do usuário
 app.use(accountRouter);
 
-app.listen(5000);
+app.listen(process.env.PORT);
 
